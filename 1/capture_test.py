@@ -47,8 +47,10 @@ def getDead():
     return sct_img
 
 def check_end(array):
-    end = cv2.imread('C:/workspace/mine/beg/dead.png', cv2.IMREAD_UNCHANGED)
+    end = cv2.imread('D:/Workspace/My/Python/project/minesweeper/1/img/dead.png', cv2.IMREAD_UNCHANGED)
+    print(type(end))
     a = (array == end).flatten()
+    print(Counter(a)[True])
     if Counter(a)[True] == 144:
         return True
     else:
@@ -56,7 +58,7 @@ def check_end(array):
 
 
 def check_clear(array):
-    end = cv2.imread('C:/workspace/mine/beg/clear.png', cv2.IMREAD_UNCHANGED)
+    end = cv2.imread('./img/clear.png', cv2.IMREAD_UNCHANGED)
     a = (array == end).flatten()
     if Counter(a)[True] == 144:
         return True

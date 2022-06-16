@@ -54,7 +54,7 @@ def getDead():
 
 class DQNAgent:
     def __init__(self, action_size):
-        self.state_size = (65, 65, 1)
+        self.state_size = (65, 65, 2)
         self.action_size = action_size
         self.learning_rate = 1e-3
         self.epsilon = 1.
@@ -91,8 +91,8 @@ class DQNAgent:
         if self.epsilon > self.epsilon_end:
             self.epsilon -= self.epsilon_decay_step
         batch = random.sample(self.memory, self.batch_size)
-        history = np.zeros((self.batch_size, 65, 65, 1), dtype=np.float32)
-        next_history = np.zeros((self.batch_size, 65, 65, 1), dtype=np.float32)
+        history = np.zeros((self.batch_size, 65, 65, 2), dtype=np.float32)
+        next_history = np.zeros((self.batch_size, 65, 65, 2), dtype=np.float32)
         actions, rewards, dead = [], [], []
 
         for i in range(self.batch_size):
@@ -144,8 +144,8 @@ class Env():
         for i in range(8):
             for j in range(8):
                 self.mouse_list.append((13+130/8*j+130/16, 101+130/8*i+130/16))
-        self.end = cv2.imread('./img/dead.png', cv2.IMREAD_UNCHANGED)
-        self.clear = cv2.imread('./img/clear.png', cv2.IMREAD_UNCHANGED)
+        self.end = cv2.imread('D:/Workspace/My/Python/project/minesweeper/1/img/dead.png', cv2.IMREAD_UNCHANGED)
+        self.clear = cv2.imread('D:/Workspace/My/Python/project/minesweeper/1/img/clear.png', cv2.IMREAD_UNCHANGED)
         
     def check_end(self, array):
         a = (array == self.end).flatten()
@@ -163,7 +163,7 @@ class Env():
 
     def step(self, action):
         pyautogui.click(x=self.mouse_list[action][0], y=self.mouse_list[action][1], button='left')
-        time.sleep(0.03)        
+        time.sleep(0.05)
         observe = getImage()
         observe_gray = pre_processing(observe)
         if self.check_end(pre_processing_dead(getDead())):
@@ -176,7 +176,7 @@ class Env():
         
     def reset(self):
         pyautogui.click(x=65+12, y=62+12, button='left')
-        time.sleep(0.02)
+        time.sleep(0.05)
         pyautogui.click(x=65+12, y=62+12, button='left')
         return getImage()
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     # np.set_printoptions(threshold=sys.maxsize)
     startTime = time.time()
     last_time = startTime
-    action_size = 256
+    action_size = 64
     agent = DQNAgent(action_size)
     global_step = 0
     scores, episodes = [], []
@@ -196,21 +196,22 @@ if __name__ == "__main__":
         step, score = 0, 0
         observe = env.reset()   
         state = pre_processing(observe)
-        history = np.stack((state), axis=2) 
-        history = np.reshape([history], (1, 65, 65, 1))
+        history = np.stack((state, state), axis=2) 
+        history = np.reshape([history], (1, 65, 65, 2))
         while not dead:
-            winname = "test"
-            cv2.namedWindow(winname)   # create a named window
-            cv2.moveWindow(winname, 0, 500)   # Move it to (40, 30)
+            # winname = "test"
+            # cv2.namedWindow(winname)   # create a named window
+            # cv2.moveWindow(winname, 0, 500)   # Move it to (40, 30)
             
             action = agent.get_action(history)
             observe, reward, dead = env.step(action)
-            score += reward
             next_state = pre_processing(observe)
-            cv2.imshow(winname, next_state)
-            next_state = np.stack((next_state), axis=2) 
+            # cv2.imshow(winname, next_state)
             next_state = np.reshape([next_state], (1, 65, 65, 1))
-            
+            next_history = np.append(next_state, history[:, :, :, :1], axis=3)
+            if Counter((next_history[:,:,:,0] == next_history[:,:,:,1]).flatten())[True] == 4225:
+                reward = -1
+            score += reward
             agent.append_sample(history, action, reward, next_state, dead)
             global_step += 1
             step += 1
@@ -220,10 +221,13 @@ if __name__ == "__main__":
                 agent.train_model()
                 if global_step % agent.update_target_rate == 0:
                     agent.update_target_model()
+            if dead:
+                history = np.stack((next_state, next_state), axis=2)
+                history = np.reshape([history], (1, 65, 65, 2))
+            else:
+                history = next_history
 
-            history = next_state
-
-            if agent.check_clear(pre_processing_dead(getDead())):
+            if env.check_clear(pre_processing_dead(getDead())):
                 print('Game Clear')
                 break
 
@@ -238,6 +242,7 @@ if __name__ == "__main__":
                 agent.avg_q_maxs.append(agent.avg_q_max)
                 agent.avg_loss = 0
                 agent.avg_q_max = 0
+
             if (cv2.waitKey(1) & 0xFF) == ord('q'):
                 cv2.destroyAllWindows()
                 break
