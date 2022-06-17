@@ -7,18 +7,14 @@ from skimage.color import rgb2gray
 from collections import Counter
 from mss import mss
 import sys
-# import pylab
+import matplotlib.pyplot as plt
 import random
 import numpy as np
 import time
 import cv2
 import pyautogui
-import webbrowser
-import pygetwindow as gw
 import os
-from pynput.keyboard import Key, Controller
-import threading
-import ctypes
+from pynput.keyboard import Controller
 
 keyboard_button = Controller()
 
@@ -61,8 +57,8 @@ class DQNAgent:
         self.epsilon_start, self.epsilon_end = 1.0, 0.02
         self.exploration_steps = 50000
         self.epsilon_decay_step = (self.epsilon_start - self.epsilon_end) / self.exploration_steps
-        self.batch_size = 256
-        self.train_start = 1000
+        self.batch_size = 512
+        self.train_start = 10000
         # self.train_start = 10000
         self.update_target_rate = 10000
         self.discount_factor = 0.99
@@ -163,7 +159,7 @@ class Env():
 
     def step(self, action):
         pyautogui.click(x=self.mouse_list[action][0], y=self.mouse_list[action][1], button='left')
-        time.sleep(0.05)
+        time.sleep(0.03)
         observe = getImage()
         observe_gray = pre_processing(observe)
         if self.check_end(pre_processing_dead(getDead())):
@@ -209,10 +205,10 @@ if __name__ == "__main__":
             # cv2.imshow(winname, next_state)
             next_state = np.reshape([next_state], (1, 65, 65, 1))
             next_history = np.append(next_state, history[:, :, :, :1], axis=3)
-            if Counter((next_history[:,:,:,0] == next_history[:,:,:,1]).flatten())[True] == 4225:
+            if Counter((next_history[:, :, :, 0] == next_history[:, :, :, 1]).flatten())[True] == 4225:
                 reward = -1
             score += reward
-            agent.append_sample(history, action, reward, next_state, dead)
+            agent.append_sample(history, action, reward, next_history, dead)
             global_step += 1
             step += 1
             agent.avg_q_max += np.amax(agent.model.predict(np.float32(history / 255.))[0])
@@ -235,7 +231,7 @@ if __name__ == "__main__":
                 agent.avg_q_max = agent.avg_q_max / float(step)
                 agent.avg_loss = agent.avg_loss / float(step)
                 print("episode: %d|"%e, "score: %3d|"%int(score), "mem_len: %d|"%len(agent.memory), "epsilon: %.2f|"%agent.epsilon,
-                    "global_step: %d|"%global_step, "avg_q: %.2f|"%agent.avg_q_max, "avg_loss: %.2f|"%agent.avg_loss)
+                    "global_step: %d|"%global_step, "avg_q: %.2f|"%agent.avg_q_max, "avg_loss: %.4f|"%agent.avg_loss)
                 scores.append(score)
                 episodes.append(e)
                 agent.avg_losses.append(agent.avg_loss)
@@ -254,24 +250,24 @@ if __name__ == "__main__":
             last_time = current_time
             print("10_episode_elapsed_time(min): %.3f"%(epi_time/60))
             print("total_elapsed_time(min): %.3f"%(total_time/60))
-            # agent.model.save_weights("C:/Workspace/dino_smol/h5/Dino_dqn_%d.h5"%e)
+            agent.model.save_weights("C:/Workspace/mine/h5/Dino_dqn_%d.h5"%e)
 
-            # pylab.plot(episodes, agent.avg_losses, 'b')
-            # pylab.title('loss')
-            # pylab.savefig("C:/Workspace/dino_smol/loss_graph/loss_%d.png"%e)
-            # pylab.clf()
-            # np.savetxt('C:/Workspace/dino_smol/loss_graph/text/avg_losses_%d.txt'%e, agent.avg_losses, fmt='%.5f')
+            plt.plot(episodes, agent.avg_losses, 'b')
+            plt.title('loss')
+            plt.savefig("C:/Workspace/mine/loss_graph/loss_%d.png"%e)
+            plt.clf()
+            np.savetxt('C:/Workspace/mine/loss_graph/text/avg_losses_%d.txt'%e, agent.avg_losses, fmt='%.5f')
 
-            # pylab.plot(episodes, agent.avg_q_maxs, 'b')
-            # pylab.title('qmax')
-            # pylab.savefig("C:/Workspace/dino_smol/qmax_graph/q_%d.png"%e)
-            # pylab.clf()
-            # np.savetxt('C:/Workspace/dino_smol/qmax_graph/text/avg_qmaxs_%d.txt'%e, agent.avg_q_maxs, fmt='%.5f')
+            plt.plot(episodes, agent.avg_q_maxs, 'b')
+            plt.title('qmax')
+            plt.savefig("C:/Workspace/mine/qmax_graph/q_%d.png"%e)
+            plt.clf()
+            np.savetxt('C:/Workspace/mine/qmax_graph/text/avg_qmaxs_%d.txt'%e, agent.avg_q_maxs, fmt='%.5f')
             
-            # pylab.plot(episodes, scores, 'b')
-            # pylab.title('score')
-            # pylab.savefig("C:/Workspace/dino_smol/score/Dino_dqn_%d.png"%e)
-            # pylab.clf()
-            # np.savetxt('C:/Workspace/dino_smol/score/text/scores_%d.txt'%e, scores, fmt='%d')
+            plt.plot(episodes, scores, 'b')
+            plt.title('score')
+            plt.savefig("C:/Workspace/mine/score/Dino_dqn_%d.png"%e)
+            plt.clf()
+            np.savetxt('C:/Workspace/mine/score/text/scores_%d.txt'%e, scores, fmt='%d')
 
     print("elapsed_time(min): %.3f"%((time.time() - startTime) / 60))
